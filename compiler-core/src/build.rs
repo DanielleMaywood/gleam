@@ -62,6 +62,9 @@ pub enum Target {
     #[strum(serialize = "javascript", serialize = "js")]
     #[serde(rename = "javascript", alias = "js")]
     JavaScript,
+    #[strum(serialize = "chez")]
+    #[serde(rename = "chez")]
+    Chez,
 }
 
 impl Target {
@@ -83,6 +86,14 @@ impl Target {
     #[must_use]
     pub fn is_erlang(&self) -> bool {
         matches!(self, Self::Erlang)
+    }
+
+    /// Returns `true` if the target is [`Chez`].
+    ///
+    /// [`Erlang`]: Target::Chez
+    #[must_use]
+    pub fn is_chez(&self) -> bool {
+        matches!(self, Self::Chez)
     }
 }
 
@@ -147,6 +158,7 @@ pub enum TargetCodegenConfiguration {
     Erlang {
         app_file: Option<ErlangAppCodegenConfiguration>,
     },
+    Chez {},
 }
 
 impl TargetCodegenConfiguration {
@@ -154,6 +166,7 @@ impl TargetCodegenConfiguration {
         match self {
             Self::JavaScript { .. } => Target::JavaScript,
             Self::Erlang { .. } => Target::Erlang,
+            Self::Chez { .. } => Target::Chez,
         }
     }
 }

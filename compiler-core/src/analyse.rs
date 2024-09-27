@@ -370,6 +370,7 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
             has_body: true,
             has_erlang_external: false,
             has_javascript_external: false,
+            has_chez_external: false,
         };
         let mut expr_typer = ExprTyper::new(environment, definition, &mut self.problems);
         let typed_expr = expr_typer.infer_const(&annotation, *value);
@@ -458,6 +459,7 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
             deprecation,
             external_erlang,
             external_javascript,
+            external_chez,
             return_type: (),
             implementations: _,
         } = f;
@@ -478,14 +480,19 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
         self.assert_valid_javascript_external(&name, external_javascript.as_ref(), location);
 
         // Find the external implementation for the current target, if one has been given.
-        let external =
-            target_function_implementation(target, &external_erlang, &external_javascript);
+        let external = target_function_implementation(
+            target,
+            &external_erlang,
+            &external_javascript,
+            &external_chez,
+        );
 
         // The function must have at least one implementation somewhere.
         let has_implementation = self.ensure_function_has_an_implementation(
             &body,
             &external_erlang,
             &external_javascript,
+            &external_chez,
             location,
         );
 
@@ -502,6 +509,7 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
             has_body,
             has_erlang_external: external_erlang.is_some(),
             has_javascript_external: external_javascript.is_some(),
+            has_chez_external: external_chez.is_some(),
         };
 
         let typed_args = arguments
@@ -613,6 +621,9 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
             external_javascript: external_javascript
                 .as_ref()
                 .map(|(m, f, _)| (m.clone(), f.clone())),
+            external_chez: external_chez
+                .as_ref()
+                .map(|(m, f, _)| (m.clone(), f.clone())),
             field_map,
             module: environment.current_module.clone(),
             arity: typed_args.len(),
@@ -643,6 +654,7 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
             body,
             external_erlang,
             external_javascript,
+            external_chez,
             implementations,
         })
     }
@@ -712,10 +724,11 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
         body: &Vec1<UntypedStatement>,
         external_erlang: &Option<(EcoString, EcoString, SrcSpan)>,
         external_javascript: &Option<(EcoString, EcoString, SrcSpan)>,
+        external_chez: &Option<(EcoString, EcoString, SrcSpan)>,
         location: SrcSpan,
     ) -> bool {
-        match (external_erlang, external_javascript) {
-            (None, None) if body.first().is_placeholder() => {
+        match (external_erlang, external_javascript, external_chez) {
+            (None, None, None) if body.first().is_placeholder() => {
                 self.problems.error(Error::NoImplementation { location });
                 false
             }
@@ -1265,6 +1278,7 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
             documentation,
             external_erlang,
             external_javascript,
+            external_chez,
             deprecation,
             end_position: _,
             body: _,
@@ -1310,6 +1324,9 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
                 .as_ref()
                 .map(|(m, f, _)| (m.clone(), f.clone())),
             external_javascript: external_javascript
+                .as_ref()
+                .map(|(m, f, _)| (m.clone(), f.clone())),
+            external_chez: external_chez
                 .as_ref()
                 .map(|(m, f, _)| (m.clone(), f.clone())),
             module: environment.current_module.clone(),
@@ -1410,10 +1427,12 @@ fn target_function_implementation<'a>(
     target: Target,
     external_erlang: &'a Option<(EcoString, EcoString, SrcSpan)>,
     external_javascript: &'a Option<(EcoString, EcoString, SrcSpan)>,
+    external_chez: &'a Option<(EcoString, EcoString, SrcSpan)>,
 ) -> &'a Option<(EcoString, EcoString, SrcSpan)> {
     match target {
         Target::Erlang => external_erlang,
         Target::JavaScript => external_javascript,
+        Target::Chez => external_chez,
     }
 }
 
@@ -1591,6 +1610,7 @@ fn generalise_function(
         return_type,
         external_erlang,
         external_javascript,
+        external_chez,
         implementations,
     } = function;
 
@@ -1614,6 +1634,9 @@ fn generalise_function(
             .as_ref()
             .map(|(m, f, _)| (m.clone(), f.clone())),
         external_javascript: external_javascript
+            .as_ref()
+            .map(|(m, f, _)| (m.clone(), f.clone())),
+        external_chez: external_chez
             .as_ref()
             .map(|(m, f, _)| (m.clone(), f.clone())),
         module: module_name.clone(),
@@ -1651,6 +1674,7 @@ fn generalise_function(
         body,
         external_erlang,
         external_javascript,
+        external_chez,
         implementations,
     })
 }

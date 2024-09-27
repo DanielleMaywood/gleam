@@ -129,6 +129,7 @@ pub fn command(
             }
             Runtime::Bun => run_javascript_bun(&paths, &main_function.package, &module, arguments),
         },
+        Target::Chez => todo!("run chez"),
     }?;
 
     std::process::exit(status);

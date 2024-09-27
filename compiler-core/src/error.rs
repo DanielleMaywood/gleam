@@ -2770,6 +2770,7 @@ and there is no implementation for the {} target.\n",
                         match current_target {
                             Target::Erlang => "Erlang",
                             Target::JavaScript => "JavaScript",
+                            Target::Chez => "Chez",
                         }
                     );
                     let hint = wrap("Did you mean to build for a different target?");
@@ -2798,6 +2799,7 @@ and there is no implementation for the {} target.\n",
                     let target = match target {
                         Target::Erlang => "Erlang",
                         Target::JavaScript => "JavaScript",
+                        Target::Chez => "Chez",
                     };
                     let text = wrap_format!(
                         "The `{name}` function is public but doesn't have an \
@@ -3518,6 +3520,7 @@ satisfying {required_version} but you are using v{gleam_version}.",
                         "You can not set a runtime for Erlang. Did you mean to target JavaScript?"
                             .into(),
                     ),
+                    Target::Chez => Some("You can not set a runtime for Chez. Did you mean to target JavaScript?".into()),
                 };
 
                 vec![Diagnostic {
