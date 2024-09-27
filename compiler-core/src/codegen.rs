@@ -1,6 +1,7 @@
 use crate::{
     analyse::TargetSupport,
     build::{ErlangAppCodegenConfiguration, Module},
+    chez,
     config::PackageConfig,
     erlang,
     io::FileSystemWriter,
@@ -249,5 +250,28 @@ impl<'a> JavaScript<'a> {
         );
         tracing::debug!(name = ?js_name, "Generated js module");
         writer.write(&path, &output?)
+    }
+}
+
+#[derive(Debug)]
+pub struct Chez<'a> {
+    output_directory: &'a Utf8Path,
+}
+
+impl<'a> Chez<'a> {
+    pub fn new(output_directory: &'a Utf8Path) -> Self {
+        Self { output_directory }
+    }
+
+    pub fn render(&self, writer: &impl FileSystemWriter, modules: &[Module]) -> Result<()> {
+        for module in modules {
+            let name = format!("{}.scm", module.ast.name);
+            let path = self.output_directory.join(name);
+
+            let output = chez::module(&module.ast);
+            let _ = writer.write(&path, &output?)?;
+        }
+
+        Ok(())
     }
 }

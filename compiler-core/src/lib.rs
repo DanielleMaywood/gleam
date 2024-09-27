@@ -61,6 +61,7 @@ pub mod analyse;
 pub mod ast;
 pub mod bit_array;
 pub mod build;
+pub mod chez;
 pub mod codegen;
 pub mod config;
 pub mod dependency;

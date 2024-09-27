@@ -121,6 +121,8 @@ struct Implementations {
   usesJavascriptExternals @2 :Bool;
   canRunOnErlang @3 :Bool;
   canRunOnJavascript @4 :Bool;
+  usesChezExternals @5 :Bool;
+  canRunOnChez @6 :Bool;
 }
 
 struct ValueConstructorVariant {
@@ -143,6 +145,7 @@ struct ValueConstructorVariant {
       implementations @18 :Implementations;
       externalErlang @20 :Option(External);
       externalJavascript @21 :Option(External);
+      externalChez @22 :Option(External);
     }
 
     record :group {
