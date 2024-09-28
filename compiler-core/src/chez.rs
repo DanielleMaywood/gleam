@@ -1,12 +1,14 @@
+use std::sync::Arc;
+
 use camino::Utf8Path;
 use itertools::Itertools;
 
 use crate::{
     ast::{
-        ArgNames, BinOp, Definition, Pattern, Statement, TypedAssignment, TypedExpr, TypedFunction,
-        TypedModule, TypedStatement,
+        ArgNames, BinOp, CustomType, Definition, Pattern, Statement, TypedAssignment, TypedExpr,
+        TypedFunction, TypedModule, TypedStatement,
     },
-    type_::ValueConstructorVariant,
+    type_::{Type, ValueConstructorVariant},
     Error,
 };
 
@@ -21,6 +23,7 @@ pub fn module(dir: &Utf8Path, module: &TypedModule) -> Result<String, Error> {
         .join("prelude.scm");
 
     code += &format!(r#"(load "{prelude}")"#);
+    code += "\n";
 
     for definition in &module.definitions {
         match definition {
@@ -29,10 +32,42 @@ pub fn module(dir: &Utf8Path, module: &TypedModule) -> Result<String, Error> {
                 code += "\n";
             }
             Definition::TypeAlias(_) => todo!(),
-            Definition::CustomType(_) => todo!(),
+            Definition::CustomType(type_) => {
+                code += &custom_type(module, type_)?;
+                code += "\n";
+            }
             Definition::Import(_) => todo!(),
             Definition::ModuleConstant(_) => todo!(),
         }
+    }
+
+    Ok(code)
+}
+
+fn custom_type(module: &TypedModule, type_: &CustomType<Arc<Type>>) -> Result<String, Error> {
+    let mut code = String::new();
+
+    for constructor in &type_.constructors {
+        let name = format!("{}.{}", module.name, constructor.name);
+        let tag = &constructor.name;
+
+        let args = (0..constructor.arguments.len())
+            .map(|idx| format!("_{idx}"))
+            .join(" ");
+
+        let variant = if args.is_empty() {
+            format!("(define ({name}) (list '{tag}))")
+        } else {
+            format!("(define ({name} {args}) (list '{tag} (make-vector {args})))")
+        };
+
+        code += &variant;
+        code += "\n";
+
+        let predicate = format!("(define ({name}? value) (eq? (car value) '{tag}))");
+
+        code += &predicate;
+        code += "\n";
     }
 
     Ok(code)
@@ -59,11 +94,7 @@ fn function_definition(module: &TypedModule, function: &TypedFunction) -> Result
     let body = statements(module, &function.body)?;
     let body = format!("(begin {body})");
 
-    Ok(format!(
-        r#"(define {name}
-  (lambda ({parameters})
-    {body}))"#
-    ))
+    Ok(format!("(define {name} (lambda ({parameters}) {body}))"))
 }
 
 fn statements(module: &TypedModule, stmts: &[TypedStatement]) -> Result<String, Error> {
@@ -173,7 +204,12 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
             BinOp::Concatenate => todo!(),
         },
         TypedExpr::Case { .. } => todo!(),
-        TypedExpr::RecordAccess { .. } => todo!(),
+        TypedExpr::RecordAccess { record, index, .. } => {
+            let record = expression(module, record)?;
+            let value = format!("(cadr {record})");
+
+            Ok(format!("(vector-ref {value} {index})"))
+        }
         TypedExpr::ModuleSelect { .. } => todo!(),
         TypedExpr::Tuple { .. } => todo!(),
         TypedExpr::TupleIndex { .. } => todo!(),
