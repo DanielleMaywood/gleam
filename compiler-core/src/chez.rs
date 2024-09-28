@@ -28,7 +28,7 @@ pub fn module(dir: &Utf8Path, module: &TypedModule) -> Result<String, Error> {
     for definition in &module.definitions {
         match definition {
             Definition::Function(function) => {
-                code += &function_definition(module, function)?;
+                code += &function_definition(dir, module, function)?;
                 code += "\n";
             }
             Definition::TypeAlias(_) => todo!(),
@@ -78,7 +78,11 @@ fn custom_type(module: &TypedModule, type_: &CustomType<Arc<Type>>) -> Result<St
     Ok(code)
 }
 
-fn function_definition(module: &TypedModule, function: &TypedFunction) -> Result<String, Error> {
+fn function_definition(
+    dir: &Utf8Path,
+    module: &TypedModule,
+    function: &TypedFunction,
+) -> Result<String, Error> {
     let parameters = (function.arguments.iter())
         .map(|arg| match &arg.names {
             ArgNames::Discard { name, .. }
@@ -96,10 +100,27 @@ fn function_definition(module: &TypedModule, function: &TypedFunction) -> Result
 
     let name = format!("{}.{name}", module.name);
 
-    let body = statements(module, &function.body)?;
-    let body = format!("(begin {body})");
+    if let Some((module, external, _)) = &function.external_chez {
+        let (import, external) = if !module.is_empty() {
+            let path = dir.join(module.as_str());
+            let import = format!("(load \"{path}.scm\")\n");
 
-    Ok(format!("(define {name} (lambda ({parameters}) {body}))"))
+            (import, format!("{module}.{external}"))
+        } else {
+            (String::new(), external.to_string())
+        };
+
+        let body = format!("({external} {parameters})");
+
+        Ok(format!(
+            "{import}(define {name} (lambda ({parameters}) {body}))"
+        ))
+    } else {
+        let body = statements(module, &function.body)?;
+        let body = format!("(begin {body})");
+
+        Ok(format!("(define {name} (lambda ({parameters}) {body}))"))
+    }
 }
 
 fn statements(module: &TypedModule, stmts: &[TypedStatement]) -> Result<String, Error> {
@@ -147,7 +168,7 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
     match expr {
         TypedExpr::Int { value, .. } => Ok(value.to_string()),
         TypedExpr::Float { value, .. } => Ok(value.to_string()),
-        TypedExpr::String { .. } => todo!(),
+        TypedExpr::String { value, .. } => Ok(format!("\"{value}\"")),
         TypedExpr::Block { .. } => todo!(),
         TypedExpr::Pipeline { .. } => todo!(),
         TypedExpr::Var {
@@ -156,17 +177,8 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
             ValueConstructorVariant::LocalVariable { .. } => Ok(name.to_string()),
             ValueConstructorVariant::ModuleConstant { .. } => todo!(),
             ValueConstructorVariant::LocalConstant { .. } => todo!(),
-            ValueConstructorVariant::ModuleFn {
-                module,
-                name,
-                external_chez,
-                ..
-            } => {
-                if let Some((_module, name)) = external_chez {
-                    Ok(format!("{name}"))
-                } else {
-                    Ok(format!("{module}.{name}"))
-                }
+            ValueConstructorVariant::ModuleFn { module, name, .. } => {
+                Ok(format!("{module}.{name}"))
             }
             ValueConstructorVariant::Record { module, name, .. } => Ok(format!("{module}.{name}")),
         },
@@ -353,7 +365,15 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
 
             Ok(format!("(vector-ref {tuple} {index})"))
         }
-        TypedExpr::Todo { .. } => todo!(),
+        TypedExpr::Todo { message, .. } => {
+            if let Some(message) = message {
+                let message = expression(module, message)?;
+
+                Ok(format!("(error \"todo\" {message})"))
+            } else {
+                Ok(format!("(error \"todo\" \"unimplemented\")"))
+            }
+        }
         TypedExpr::Panic { message, .. } => {
             if let Some(message) = message {
                 let message = expression(module, message)?;

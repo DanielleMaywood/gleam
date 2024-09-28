@@ -317,7 +317,15 @@ where
     }
 
     fn perform_chez_codegen(&mut self, modules: &[Module]) -> Result<(), Error> {
+        let mut written = HashSet::new();
+
         Chez::new(&self.out).render(&self.io, modules)?;
+
+        if self.copy_native_files {
+            self.copy_project_native_files(&self.out, &mut written)?;
+        } else {
+            tracing::debug!("skipping_native_file_copying");
+        }
 
         Ok(())
     }

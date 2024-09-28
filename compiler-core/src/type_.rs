@@ -473,6 +473,7 @@ impl ValueConstructorVariant {
                 external_erlang: None,
                 external_javascript: None,
                 documentation: None,
+                external_chez: None,
                 location: *location,
                 field_map: None,
             },
@@ -485,6 +486,7 @@ impl ValueConstructorVariant {
                 field_map,
                 external_erlang,
                 external_javascript,
+                external_chez,
                 ..
             } => ModuleValueConstructor::Fn {
                 name: name.clone(),
@@ -492,6 +494,7 @@ impl ValueConstructorVariant {
                 documentation: documentation.clone(),
                 external_erlang: external_erlang.clone(),
                 external_javascript: external_javascript.clone(),
+                external_chez: external_chez.clone(),
                 location: *location,
                 field_map: field_map.clone(),
             },
@@ -593,6 +596,7 @@ pub enum ModuleValueConstructor {
         ///
         external_erlang: Option<(EcoString, EcoString)>,
         external_javascript: Option<(EcoString, EcoString)>,
+        external_chez: Option<(EcoString, EcoString)>,
         field_map: Option<FieldMap>,
         documentation: Option<EcoString>,
     },
