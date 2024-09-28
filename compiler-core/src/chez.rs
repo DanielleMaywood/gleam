@@ -58,7 +58,7 @@ fn custom_type(module: &TypedModule, type_: &CustomType<Arc<Type>>) -> Result<St
         let variant = if args.is_empty() {
             format!("(define ({name}) (list '{tag}))")
         } else {
-            format!("(define ({name} {args}) (list '{tag} (make-vector {args})))")
+            format!("(define ({name} {args}) (list '{tag} (vector {args})))")
         };
 
         code += &variant;
@@ -247,8 +247,21 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
             Ok(format!("(vector-ref {value} {index})"))
         }
         TypedExpr::ModuleSelect { .. } => todo!(),
-        TypedExpr::Tuple { .. } => todo!(),
-        TypedExpr::TupleIndex { .. } => todo!(),
+        TypedExpr::Tuple { elems, .. } => {
+            let elems: Vec<String> = elems
+                .iter()
+                .map(|elem| expression(module, elem))
+                .try_collect()?;
+
+            let elems = elems.join(" ");
+
+            Ok(format!("(vector {elems})"))
+        }
+        TypedExpr::TupleIndex { tuple, index, .. } => {
+            let tuple = expression(module, tuple)?;
+
+            Ok(format!("(vector-ref {tuple} {index})"))
+        }
         TypedExpr::Todo { .. } => todo!(),
         TypedExpr::Panic { message, .. } => {
             if let Some(message) = message {

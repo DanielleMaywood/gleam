@@ -1,6 +1,10 @@
 @external(chez, "", "display")
 pub fn display(item: anything) -> Nil
 
+pub type Foo {
+  Foo(x: Int, y: Int)
+}
+
 pub fn fib(n: Int) -> Int {
   do_fib(n, 0, 1)
 }
@@ -14,5 +18,5 @@ fn do_fib(n: Int, a: Int, b: Int) -> Int {
 }
 
 pub fn main() {
-  display(fib(100))
+  #(1, 2).1 + Foo(1, 2).x
 }
