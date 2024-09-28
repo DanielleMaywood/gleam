@@ -166,7 +166,20 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
             ValueConstructorVariant::Record { module, name, .. } => Ok(format!("{module}.{name}")),
         },
         TypedExpr::Fn { .. } => todo!(),
-        TypedExpr::List { .. } => todo!(),
+        TypedExpr::List { elements, tail, .. } => {
+            let tail = if let Some(tail) = tail {
+                expression(module, tail)?
+            } else {
+                format!("(list)")
+            };
+
+            let list = elements.iter().try_rfold(tail, |acc, elem| {
+                expression(module, elem) //
+                    .map(|elem| format!("(cons {elem} {acc})"))
+            })?;
+
+            Ok(list)
+        }
         TypedExpr::Call { fun, args, .. } => {
             let fun = expression(module, fun)?;
 
