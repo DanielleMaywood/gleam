@@ -4,6 +4,7 @@ use camino::Utf8Path;
 use itertools::Itertools;
 
 use crate::{
+    analyse::Inferred,
     ast::{
         ArgNames, BinOp, CustomType, Definition, Pattern, Statement, TypedAssignment, TypedClause,
         TypedExpr, TypedFunction, TypedModule, TypedPattern, TypedStatement,
@@ -345,8 +346,12 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
 
             Ok(format!("(vector-ref {value} {index})"))
         }
-        TypedExpr::ModuleSelect { constructor, .. } => match constructor {
-            ModuleValueConstructor::Record { .. } => todo!(),
+        TypedExpr::ModuleSelect {
+            constructor,
+            module_name,
+            ..
+        } => match constructor {
+            ModuleValueConstructor::Record { name, .. } => Ok(format!("{module_name}.{name}")),
             ModuleValueConstructor::Fn { module, name, .. } => Ok(format!("{module}.{name}")),
             ModuleValueConstructor::Constant { .. } => todo!(),
         },
@@ -435,15 +440,24 @@ fn patterns(
 
 fn pattern(_module: &TypedModule, subject: &str, ptn: &TypedPattern) -> Result<String, Error> {
     match ptn {
-        Pattern::Int { value, .. } => Ok(format!("(eq? {subject} {value})")),
-        Pattern::Float { .. } => todo!(),
-        Pattern::String { .. } => todo!(),
+        Pattern::Int { value, .. } | Pattern::Float { value, .. } => {
+            Ok(format!("(eq? {subject} {value})"))
+        }
+        Pattern::String { value, .. } => Ok(format!("(eq? {subject} \"{value}\")")),
         Pattern::Variable { .. } => Ok(format!("gleam.True")),
+        // TODO: BitArray
         Pattern::VarUsage { .. } => todo!(),
         Pattern::Assign { .. } => todo!(),
         Pattern::Discard { .. } => Ok(format!("gleam.True")),
         Pattern::List { .. } => todo!(),
-        Pattern::Constructor { .. } => todo!(),
+        Pattern::Constructor { constructor, .. } => match constructor {
+            Inferred::Known(constructor) => {
+                let check = format!("{}.{}?", constructor.module, constructor.name);
+
+                Ok(format!("({check} {subject})"))
+            }
+            Inferred::Unknown => panic!("unreachable"),
+        },
         Pattern::Tuple { .. } => todo!(),
         Pattern::BitArray { .. } => todo!(),
         Pattern::StringPrefix { .. } => todo!(),
