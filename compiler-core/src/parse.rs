@@ -3558,6 +3558,7 @@ functions are declared separately from types.";
         let target = match name.as_str() {
             "erlang" => Target::Erlang,
             "javascript" => Target::JavaScript,
+            "chez" => Target::Chez,
             _ => return parse_error(ParseErrorType::UnknownTarget, SrcSpan::new(start, end)),
         };
 
