@@ -1,3 +1,9 @@
+import project_chez/math
+
+fn do_math(lhs, rhs, perform) {
+  perform(lhs, rhs)
+}
+
 pub fn main() {
-  [1, 2, 3, ..[4, 5, 6]]
+  do_math(4, 6, math.add)
 }
