@@ -8,7 +8,7 @@ use crate::{
         ArgNames, BinOp, CustomType, Definition, Pattern, Statement, TypedAssignment, TypedClause,
         TypedExpr, TypedFunction, TypedModule, TypedPattern, TypedStatement,
     },
-    type_::{Type, ValueConstructorVariant},
+    type_::{ModuleValueConstructor, Type, ValueConstructorVariant},
     Error,
 };
 
@@ -36,7 +36,12 @@ pub fn module(dir: &Utf8Path, module: &TypedModule) -> Result<String, Error> {
                 code += &custom_type(module, type_)?;
                 code += "\n";
             }
-            Definition::Import(_) => todo!(),
+            Definition::Import(package) => {
+                let path = dir.join(package.module.as_str());
+
+                code += &format!("(load \"{path}.scm\")");
+                code += "\n";
+            }
             Definition::ModuleConstant(_) => todo!(),
         }
     }
@@ -134,7 +139,7 @@ fn assignment(
         Pattern::Tuple { .. } => todo!(),
         Pattern::BitArray { .. } => todo!(),
         Pattern::StringPrefix { .. } => todo!(),
-        Pattern::Invalid { .. } => todo!(),
+        Pattern::Invalid { .. } => panic!("unreachable"),
     }
 }
 
@@ -165,7 +170,21 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
             }
             ValueConstructorVariant::Record { module, name, .. } => Ok(format!("{module}.{name}")),
         },
-        TypedExpr::Fn { .. } => todo!(),
+        TypedExpr::Fn { args, body, .. } => {
+            let parameters = (args.iter())
+                .map(|arg| match &arg.names {
+                    ArgNames::Discard { name, .. }
+                    | ArgNames::LabelledDiscard { name, .. }
+                    | ArgNames::Named { name, .. }
+                    | ArgNames::NamedLabelled { name, .. } => name,
+                })
+                .join(" ");
+
+            let body = statements(module, &body)?;
+            let body = format!("(begin {body})");
+
+            Ok(format!("(lambda ({parameters}) {body})"))
+        }
         TypedExpr::List { elements, tail, .. } => {
             let tail = if let Some(tail) = tail {
                 expression(module, tail)?
@@ -200,17 +219,48 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
 
                 Ok(format!("(and {lhs} {rhs})"))
             }
-            BinOp::Or => todo!(),
-            BinOp::Eq => todo!(),
-            BinOp::NotEq => todo!(),
-            BinOp::LtInt => todo!(),
-            BinOp::LtEqInt => todo!(),
-            BinOp::LtFloat => todo!(),
-            BinOp::LtEqFloat => todo!(),
-            BinOp::GtEqInt => todo!(),
-            BinOp::GtInt => todo!(),
-            BinOp::GtEqFloat => todo!(),
-            BinOp::GtFloat => todo!(),
+            BinOp::Or => {
+                let lhs = expression(module, left)?;
+                let rhs = expression(module, right)?;
+
+                Ok(format!("(or {lhs} {rhs})"))
+            }
+            BinOp::Eq => {
+                let lhs = expression(module, left)?;
+                let rhs = expression(module, right)?;
+
+                Ok(format!("(eq? {lhs} {rhs})"))
+            }
+            BinOp::NotEq => {
+                let lhs = expression(module, left)?;
+                let rhs = expression(module, right)?;
+
+                Ok(format!("(not (eq? {lhs} {rhs}))"))
+            }
+            BinOp::LtInt | BinOp::LtFloat => {
+                let lhs = expression(module, left)?;
+                let rhs = expression(module, right)?;
+
+                Ok(format!("(< {lhs} {rhs})"))
+            }
+            BinOp::LtEqInt | BinOp::LtEqFloat => {
+                let lhs = expression(module, left)?;
+                let rhs = expression(module, right)?;
+
+                Ok(format!("(<= {lhs} {rhs})"))
+            }
+            BinOp::GtEqInt | BinOp::GtEqFloat => {
+                let lhs = expression(module, left)?;
+                let rhs = expression(module, right)?;
+
+                Ok(format!("(>= {lhs} {rhs})"))
+            }
+            BinOp::GtInt | BinOp::GtFloat => {
+                let lhs = expression(module, left)?;
+                let rhs = expression(module, right)?;
+
+                Ok(format!("(> {lhs} {rhs})"))
+            }
             BinOp::AddInt | BinOp::AddFloat => {
                 let lhs = expression(module, left)?;
                 let rhs = expression(module, right)?;
@@ -223,12 +273,36 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
 
                 Ok(format!("(- {lhs} {rhs})"))
             }
-            BinOp::MultInt => todo!(),
-            BinOp::MultFloat => todo!(),
-            BinOp::DivInt => todo!(),
-            BinOp::DivFloat => todo!(),
-            BinOp::RemainderInt => todo!(),
-            BinOp::Concatenate => todo!(),
+            BinOp::MultInt | BinOp::MultFloat => {
+                let lhs = expression(module, left)?;
+                let rhs = expression(module, right)?;
+
+                Ok(format!("(* {lhs} {rhs})"))
+            }
+            BinOp::DivInt => {
+                let lhs = expression(module, left)?;
+                let rhs = expression(module, right)?;
+
+                Ok(format!("(div {lhs} {rhs})"))
+            }
+            BinOp::DivFloat => {
+                let lhs = expression(module, left)?;
+                let rhs = expression(module, right)?;
+
+                Ok(format!("(/ {lhs} {rhs})"))
+            }
+            BinOp::RemainderInt => {
+                let lhs = expression(module, left)?;
+                let rhs = expression(module, right)?;
+
+                Ok(format!("(% {lhs} {rhs})"))
+            }
+            BinOp::Concatenate => {
+                let lhs = expression(module, left)?;
+                let rhs = expression(module, right)?;
+
+                Ok(format!("(string-append {lhs} {rhs})"))
+            }
         },
         TypedExpr::Case {
             subjects, clauses, ..
@@ -259,7 +333,11 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
 
             Ok(format!("(vector-ref {value} {index})"))
         }
-        TypedExpr::ModuleSelect { .. } => todo!(),
+        TypedExpr::ModuleSelect { constructor, .. } => match constructor {
+            ModuleValueConstructor::Record { .. } => todo!(),
+            ModuleValueConstructor::Fn { module, name, .. } => Ok(format!("{module}.{name}")),
+            ModuleValueConstructor::Constant { .. } => todo!(),
+        },
         TypedExpr::Tuple { elems, .. } => {
             let elems: Vec<String> = elems
                 .iter()
