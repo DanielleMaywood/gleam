@@ -5,8 +5,8 @@ use itertools::Itertools;
 
 use crate::{
     ast::{
-        ArgNames, BinOp, CustomType, Definition, Pattern, Statement, TypedAssignment, TypedExpr,
-        TypedFunction, TypedModule, TypedStatement,
+        ArgNames, BinOp, CustomType, Definition, Pattern, Statement, TypedAssignment, TypedClause,
+        TypedExpr, TypedFunction, TypedModule, TypedPattern, TypedStatement,
     },
     type_::{Type, ValueConstructorVariant},
     Error,
@@ -151,8 +151,17 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
             ValueConstructorVariant::LocalVariable { .. } => Ok(name.to_string()),
             ValueConstructorVariant::ModuleConstant { .. } => todo!(),
             ValueConstructorVariant::LocalConstant { .. } => todo!(),
-            ValueConstructorVariant::ModuleFn { module, name, .. } => {
-                Ok(format!("{module}.{name}"))
+            ValueConstructorVariant::ModuleFn {
+                module,
+                name,
+                external_chez,
+                ..
+            } => {
+                if let Some((_module, name)) = external_chez {
+                    Ok(format!("{name}"))
+                } else {
+                    Ok(format!("{module}.{name}"))
+                }
             }
             ValueConstructorVariant::Record { module, name, .. } => Ok(format!("{module}.{name}")),
         },
@@ -172,7 +181,12 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
         TypedExpr::BinOp {
             left, right, name, ..
         } => match name {
-            BinOp::And => todo!(),
+            BinOp::And => {
+                let lhs = expression(module, left)?;
+                let rhs = expression(module, right)?;
+
+                Ok(format!("(and {lhs} {rhs})"))
+            }
             BinOp::Or => todo!(),
             BinOp::Eq => todo!(),
             BinOp::NotEq => todo!(),
@@ -203,7 +217,29 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
             BinOp::RemainderInt => todo!(),
             BinOp::Concatenate => todo!(),
         },
-        TypedExpr::Case { .. } => todo!(),
+        TypedExpr::Case {
+            subjects, clauses, ..
+        } => {
+            let clauses: Vec<String> = clauses
+                .iter()
+                .map(|cl| clause(module, subjects.len(), cl))
+                .try_collect()?;
+
+            let clauses = clauses.join(" ");
+
+            let subjects: Vec<String> = (subjects.iter().enumerate())
+                .map(|(index, subject)| {
+                    expression(module, subject) //
+                        .map(|subject| format!("(_{index} {subject})"))
+                })
+                .try_collect()?;
+
+            let subjects = subjects.join(" ");
+
+            let cond = format!("(cond {clauses} (else (error \"panic\" \"unreachable\")))");
+
+            Ok(format!("(let ({subjects}) {cond})"))
+        }
         TypedExpr::RecordAccess { record, index, .. } => {
             let record = expression(module, record)?;
             let value = format!("(cadr {record})");
@@ -214,11 +250,79 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
         TypedExpr::Tuple { .. } => todo!(),
         TypedExpr::TupleIndex { .. } => todo!(),
         TypedExpr::Todo { .. } => todo!(),
-        TypedExpr::Panic { .. } => todo!(),
+        TypedExpr::Panic { message, .. } => {
+            if let Some(message) = message {
+                let message = expression(module, message)?;
+
+                Ok(format!("(error \"panic\" {message})"))
+            } else {
+                Ok(format!("(error \"panic\" \"an error has occurred\")"))
+            }
+        }
         TypedExpr::BitArray { .. } => todo!(),
         TypedExpr::RecordUpdate { .. } => todo!(),
-        TypedExpr::NegateBool { .. } => todo!(),
-        TypedExpr::NegateInt { .. } => todo!(),
+        TypedExpr::NegateBool { value, .. } => {
+            let value = expression(module, value)?;
+
+            Ok(format!("(not {value})"))
+        }
+        TypedExpr::NegateInt { value, .. } => {
+            let value = expression(module, value)?;
+
+            Ok(format!("(- {value})"))
+        }
         TypedExpr::Invalid { .. } => panic!("unreachable"),
+    }
+}
+
+fn clause(module: &TypedModule, subjects: usize, clause: &TypedClause) -> Result<String, Error> {
+    let subjects = (0..subjects).map(|index| format!("_{index}")).collect_vec();
+
+    let base = patterns(module, &subjects, &clause.pattern)?;
+
+    let rest: Vec<String> = clause
+        .alternative_patterns
+        .iter()
+        .map(|alt| patterns(module, &subjects, alt))
+        .try_collect()?;
+
+    let rest = rest.join(" ");
+
+    let then = expression(module, &clause.then)?;
+
+    Ok(format!("((or {base} {rest}) {then})"))
+}
+
+fn patterns(
+    module: &TypedModule,
+    subjects: &[String],
+    patterns: &[TypedPattern],
+) -> Result<String, Error> {
+    let patterns: Vec<String> = patterns
+        .iter()
+        .zip(subjects.iter())
+        .map(|(ptn, subject)| pattern(module, subject, ptn))
+        .try_collect()?;
+
+    let patterns = patterns.join(" ");
+
+    Ok(format!("(and {patterns})"))
+}
+
+fn pattern(_module: &TypedModule, subject: &str, ptn: &TypedPattern) -> Result<String, Error> {
+    match ptn {
+        Pattern::Int { value, .. } => Ok(format!("(eq? {subject} {value})")),
+        Pattern::Float { .. } => todo!(),
+        Pattern::String { .. } => todo!(),
+        Pattern::Variable { .. } => Ok(format!("gleam.True")),
+        Pattern::VarUsage { .. } => todo!(),
+        Pattern::Assign { .. } => todo!(),
+        Pattern::Discard { .. } => Ok(format!("gleam.True")),
+        Pattern::List { .. } => todo!(),
+        Pattern::Constructor { .. } => todo!(),
+        Pattern::Tuple { .. } => todo!(),
+        Pattern::BitArray { .. } => todo!(),
+        Pattern::StringPrefix { .. } => todo!(),
+        Pattern::Invalid { .. } => panic!("unreachable"),
     }
 }
