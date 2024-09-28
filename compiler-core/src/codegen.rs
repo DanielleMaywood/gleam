@@ -268,7 +268,7 @@ impl<'a> Chez<'a> {
             let name = format!("{}.scm", module.ast.name);
             let path = self.output_directory.join(name);
 
-            let output = chez::module(&module.ast);
+            let output = chez::module(&self.output_directory, &module.ast);
             let _ = writer.write(&path, &output?)?;
         }
 

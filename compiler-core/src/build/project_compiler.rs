@@ -256,30 +256,42 @@ where
     }
 
     fn write_prelude(&self) -> Result<()> {
-        // Only the JavaScript target has a prelude to write.
-        if !self.target().is_javascript() {
-            return Ok(());
-        }
+        match self.target() {
+            Target::Erlang => Ok(()),
+            Target::JavaScript => {
+                let build = self
+                    .paths
+                    .build_directory_for_target(self.mode(), self.target());
 
-        let build = self
-            .paths
-            .build_directory_for_target(self.mode(), self.target());
+                // Write the JavaScript prelude
+                let path = build.join("prelude.mjs");
+                if !self.io.is_file(&path) {
+                    self.io.write(&path, crate::javascript::PRELUDE)?;
+                }
 
-        // Write the JavaScript prelude
-        let path = build.join("prelude.mjs");
-        if !self.io.is_file(&path) {
-            self.io.write(&path, crate::javascript::PRELUDE)?;
-        }
+                // Write the TypeScript prelude, if asked for
+                if self.config.javascript.typescript_declarations {
+                    let path = build.join("prelude.d.mts");
+                    if !self.io.is_file(&path) {
+                        self.io.write(&path, crate::javascript::PRELUDE_TS_DEF)?;
+                    }
+                }
 
-        // Write the TypeScript prelude, if asked for
-        if self.config.javascript.typescript_declarations {
-            let path = build.join("prelude.d.mts");
-            if !self.io.is_file(&path) {
-                self.io.write(&path, crate::javascript::PRELUDE_TS_DEF)?;
+                Ok(())
+            }
+            Target::Chez => {
+                let build = self
+                    .paths
+                    .build_directory_for_target(self.mode(), self.target());
+
+                let path = build.join("prelude.scm");
+                if !self.io.is_file(&path) {
+                    self.io.write(&path, crate::chez::PRELUDE);
+                }
+
+                Ok(())
             }
         }
-
-        Ok(())
     }
 
     fn load_cache_or_compile_package(&mut self, name: &str) -> Result<Vec<Module>, Error> {
