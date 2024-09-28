@@ -1,3 +1,4 @@
+use camino::Utf8Path;
 use itertools::Itertools;
 
 use crate::{
@@ -9,8 +10,17 @@ use crate::{
     Error,
 };
 
-pub fn module(module: &TypedModule) -> Result<String, Error> {
+pub const PRELUDE: &'static str = include_str!("../templates/prelude.scm");
+
+pub fn module(dir: &Utf8Path, module: &TypedModule) -> Result<String, Error> {
     let mut code = String::new();
+
+    let prelude = dir
+        .parent()
+        .expect("expecting a parent directory")
+        .join("prelude.scm");
+
+    code += &format!(r#"(load "{prelude}")"#);
 
     for definition in &module.definitions {
         match definition {
@@ -87,7 +97,7 @@ fn assignment(
         Pattern::Variable { name, .. } => Ok(format!("(let (({name} {value})) (begin {rest}))")),
         Pattern::VarUsage { .. } => todo!(),
         Pattern::Assign { .. } => todo!(),
-        Pattern::Discard { .. } => todo!(),
+        Pattern::Discard { .. } => Ok(format!("(let ((_ {value})) (begin {rest}))")),
         Pattern::List { .. } => todo!(),
         Pattern::Constructor { .. } => todo!(),
         Pattern::Tuple { .. } => todo!(),
@@ -100,7 +110,7 @@ fn assignment(
 fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
     match expr {
         TypedExpr::Int { value, .. } => Ok(value.to_string()),
-        TypedExpr::Float { .. } => todo!(),
+        TypedExpr::Float { value, .. } => Ok(value.to_string()),
         TypedExpr::String { .. } => todo!(),
         TypedExpr::Block { .. } => todo!(),
         TypedExpr::Pipeline { .. } => todo!(),
@@ -113,7 +123,7 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
             ValueConstructorVariant::ModuleFn { module, name, .. } => {
                 Ok(format!("{module}.{name}"))
             }
-            ValueConstructorVariant::Record { .. } => todo!(),
+            ValueConstructorVariant::Record { module, name, .. } => Ok(format!("{module}.{name}")),
         },
         TypedExpr::Fn { .. } => todo!(),
         TypedExpr::List { .. } => todo!(),
@@ -173,6 +183,6 @@ fn expression(module: &TypedModule, expr: &TypedExpr) -> Result<String, Error> {
         TypedExpr::RecordUpdate { .. } => todo!(),
         TypedExpr::NegateBool { .. } => todo!(),
         TypedExpr::NegateInt { .. } => todo!(),
-        TypedExpr::Invalid { .. } => todo!(),
+        TypedExpr::Invalid { .. } => panic!("unreachable"),
     }
 }

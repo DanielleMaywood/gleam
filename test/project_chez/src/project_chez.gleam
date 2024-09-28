@@ -3,8 +3,5 @@ pub fn add(lhs: Int, rhs: Int) -> Int {
 }
 
 pub fn main() {
-  let x = 3
-  let y = 4
-
-  add(x, y)
+  True
 }
