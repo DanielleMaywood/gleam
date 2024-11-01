@@ -472,8 +472,8 @@ impl ValueConstructorVariant {
                 module: module_name.clone(),
                 external_erlang: None,
                 external_javascript: None,
-                documentation: None,
                 external_chez: None,
+                documentation: None,
                 location: *location,
                 field_map: None,
             },
@@ -542,7 +542,7 @@ impl ValueConstructorVariant {
                 can_run_on_chez: true,
                 uses_javascript_externals: false,
                 uses_erlang_externals: false,
-                uses_chez_external: false,
+                uses_chez_externals: false,
             },
 
             ValueConstructorVariant::ModuleFn {

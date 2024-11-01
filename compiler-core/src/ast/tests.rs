@@ -363,6 +363,7 @@ fn find_node_module_select() {
             name: "function".into(),
             external_erlang: None,
             external_javascript: None,
+            external_chez: None,
             location: SrcSpan { start: 1, end: 55 },
             documentation: None,
             field_map: None,

@@ -284,9 +284,19 @@ where
                     .paths
                     .build_directory_for_target(self.mode(), self.target());
 
-                let path = build.join("prelude.scm");
+                let path = build.join("gleam/$prelude.scm");
                 if !self.io.is_file(&path) {
                     self.io.write(&path, crate::chez::PRELUDE);
+                }
+
+                let path = build.join("compile.scm");
+                if !self.io.is_file(&path) {
+                    self.io.write(&path, crate::chez::COMPILE);
+                }
+
+                let path = build.join("run.sh");
+                if !self.io.is_file(&path) {
+                    self.io.write(&path, crate::chez::RUNNER);
                 }
 
                 Ok(())

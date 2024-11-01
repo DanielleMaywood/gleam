@@ -5,7 +5,7 @@ pub fn and(a: Bool, b: Bool) -> Bool {
 }
 
 pub fn or(a: Bool, b: Bool) -> Bool {
-  a && b
+  a || b
 }
 
 pub fn negate(bool: Bool) -> Bool {
@@ -50,10 +50,10 @@ pub fn exclusive_nor(a: Bool, b: Bool) -> Bool {
 
 pub fn compare(a: Bool, with b: Bool) -> Order {
   case a, b {
+    True, True -> order.Eq
+    True, False -> order.Gt
     False, False -> order.Eq
-    False, True -> order.Gt
-    True, False -> order.Eq
-    True, True -> order.Lt
+    False, True -> order.Lt
   }
 }
 

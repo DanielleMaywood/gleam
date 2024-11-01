@@ -48,7 +48,7 @@ pub struct Implementations {
     pub uses_javascript_externals: bool,
     /// Wether the function has an implementation that uses external chez
     /// code.
-    pub uses_chez_external: bool,
+    pub uses_chez_externals: bool,
 }
 
 impl Implementations {
@@ -60,7 +60,7 @@ impl Implementations {
             can_run_on_chez: true,
             uses_javascript_externals: false,
             uses_erlang_externals: false,
-            uses_chez_external: false,
+            uses_chez_externals: false,
         }
     }
 }
@@ -106,7 +106,7 @@ impl Implementations {
             gleam,
             uses_erlang_externals: other_uses_erlang_externals,
             uses_javascript_externals: other_uses_javascript_externals,
-            uses_chez_external: other_uses_chez_externals,
+            uses_chez_externals: other_uses_chez_externals,
             can_run_on_erlang: other_can_run_on_erlang,
             can_run_on_javascript: other_can_run_on_javascript,
             can_run_on_chez: other_can_run_on_chez,
@@ -152,7 +152,7 @@ impl Implementations {
         self.uses_erlang_externals = self.uses_erlang_externals || *other_uses_erlang_externals;
         self.uses_javascript_externals =
             self.uses_javascript_externals || *other_uses_javascript_externals;
-        self.uses_chez_external = self.uses_chez_external || *other_uses_chez_externals;
+        self.uses_chez_externals = self.uses_chez_externals || *other_uses_chez_externals;
     }
 
     /// Returns true if the current target is supported by the given
@@ -254,7 +254,7 @@ impl<'a, 'b> ExprTyper<'a, 'b> {
             can_run_on_chez: definition.has_body || definition.has_chez_external,
             uses_erlang_externals: definition.has_erlang_external,
             uses_javascript_externals: definition.has_javascript_external,
-            uses_chez_external: definition.has_chez_external,
+            uses_chez_externals: definition.has_chez_external,
         };
 
         hydrator.permit_holes(true);

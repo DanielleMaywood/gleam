@@ -327,6 +327,26 @@ where
             tracing::debug!("skipping_native_file_copying");
         }
 
+        for module in modules {
+            let mut args = vec![];
+
+            let compile_script = self.out.parent().unwrap().join("compile.scm");
+            let module_path = self.out.join(module.ast.name.as_str());
+
+            args.push("--script".into());
+            args.push(compile_script.into());
+            args.push(module_path.into());
+
+            let status = self.io.exec("chez", &args, &[], None, Stdio::Null)?;
+
+            if status != 0 {
+                return Err(Error::ShellCommand {
+                    program: "chez".into(),
+                    err: None,
+                });
+            }
+        }
+
         Ok(())
     }
 

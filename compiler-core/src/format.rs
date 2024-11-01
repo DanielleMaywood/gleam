@@ -763,6 +763,7 @@ impl<'comments> Formatter<'comments> {
             .set_internal(function.publicity)
             .set_external_erlang(&function.external_erlang)
             .set_external_javascript(&function.external_javascript)
+            .set_external_chez(&function.external_chez)
             .to_doc();
 
         // Fn name and args
@@ -3004,6 +3005,7 @@ fn constant_call_arg_formatting<A, B>(
 struct AttributesPrinter<'a> {
     external_erlang: &'a Option<(EcoString, EcoString, SrcSpan)>,
     external_javascript: &'a Option<(EcoString, EcoString, SrcSpan)>,
+    external_chez: &'a Option<(EcoString, EcoString, SrcSpan)>,
     deprecation: &'a Deprecation,
     internal: bool,
 }
@@ -3013,6 +3015,7 @@ impl<'a> AttributesPrinter<'a> {
         Self {
             external_erlang: &None,
             external_javascript: &None,
+            external_chez: &None,
             deprecation: &Deprecation::NotDeprecated,
             internal: false,
         }
@@ -3031,6 +3034,14 @@ impl<'a> AttributesPrinter<'a> {
         external: &'a Option<(EcoString, EcoString, SrcSpan)>,
     ) -> Self {
         self.external_javascript = external;
+        self
+    }
+
+    pub fn set_external_chez(
+        mut self,
+        external: &'a Option<(EcoString, EcoString, SrcSpan)>,
+    ) -> Self {
+        self.external_chez = external;
         self
     }
 
@@ -3061,6 +3072,10 @@ impl<'a> Documentable<'a> for AttributesPrinter<'a> {
 
         if let Some((m, f, _)) = self.external_javascript {
             attributes.push(docvec!["@external(javascript, \"", m, "\", \"", f, "\")"])
+        };
+
+        if let Some((m, f, _)) = self.external_chez {
+            attributes.push(docvec!["@external(chez, \"", m, "\", \"", f, "\")"])
         };
 
         // @internal attribute

@@ -9,6 +9,7 @@ use crate::{
     line_numbers::LineNumbers,
     Result,
 };
+use im::HashSet;
 use itertools::Itertools;
 use std::fmt::Debug;
 
@@ -268,10 +269,37 @@ impl<'a> Chez<'a> {
             let name = format!("{}.scm", module.ast.name);
             let path = self.output_directory.join(name);
 
-            let output = chez::module(&self.output_directory, &module.ast);
+            let mut dependencies = HashSet::new();
+
+            let output = chez::module(&self.output_directory, &module.ast, &mut dependencies);
             let _ = writer.write(&path, &output?)?;
+
+            let dependencies = dependencies
+                .into_iter()
+                .map(|d| self.output_directory.join(d))
+                .join("\n");
+
+            let dependencies_name = format!("{}.deps", module.ast.name);
+            let dependencies_path = self.output_directory.join(dependencies_name);
+
+            let _ = writer.write(&dependencies_path, &dependencies)?;
+
+            if Self::has_main(module) {
+                let main_name = format!("{}.main.scm", module.ast.name);
+                let main_path = self.output_directory.join(main_name);
+
+                let _ = writer.write(
+                    &main_path,
+                    &format!("(import ({name})) ({name}.main)", name = module.ast.name),
+                );
+            }
         }
 
         Ok(())
+    }
+
+    fn has_main(module: &Module) -> bool {
+        (module.ast.definitions.iter()) //
+            .any(|def| def.main_function().is_some())
     }
 }

@@ -125,7 +125,9 @@ struct Attributes {
 
 impl Attributes {
     fn has_function_only(&self) -> bool {
-        self.external_erlang.is_some() || self.external_javascript.is_some()
+        self.external_erlang.is_some()
+            || self.external_javascript.is_some()
+            || self.external_chez.is_some()
     }
 
     fn has_external_for(&self, target: Target) -> bool {
@@ -1863,7 +1865,7 @@ where
                 can_run_on_chez: true,
                 uses_erlang_externals: false,
                 uses_javascript_externals: false,
-                uses_chez_external: false,
+                uses_chez_externals: false,
             },
         })))
     }
@@ -2625,7 +2627,7 @@ where
                     can_run_on_chez: true,
                     uses_erlang_externals: false,
                     uses_javascript_externals: false,
-                    uses_chez_external: false,
+                    uses_chez_externals: false,
                 },
             })))
         } else {

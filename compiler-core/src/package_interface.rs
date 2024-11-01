@@ -260,7 +260,7 @@ impl ImplementationsInterface {
             gleam,
             uses_erlang_externals,
             uses_javascript_externals,
-            uses_chez_external,
+            uses_chez_externals,
 
             can_run_on_erlang,
             can_run_on_javascript,
@@ -271,7 +271,7 @@ impl ImplementationsInterface {
             gleam: *gleam,
             uses_erlang_externals: *uses_erlang_externals,
             uses_javascript_externals: *uses_javascript_externals,
-            uses_chez_externals: *uses_chez_external,
+            uses_chez_externals: *uses_chez_externals,
             can_run_on_erlang: *can_run_on_erlang,
             can_run_on_javascript: *can_run_on_javascript,
             can_run_on_chez: *can_run_on_chez,

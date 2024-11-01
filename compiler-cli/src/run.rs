@@ -129,10 +129,30 @@ pub fn command(
             }
             Runtime::Bun => run_javascript_bun(&paths, &main_function.package, &module, arguments),
         },
-        Target::Chez => todo!("run chez"),
+        Target::Chez => run_chez(&paths, &root_config.name, &module, arguments),
     }?;
 
     std::process::exit(status);
+}
+
+fn run_chez(
+    paths: &ProjectPaths,
+    package: &str,
+    module: &str,
+    arguments: Vec<String>,
+) -> Result<i32, Error> {
+    // let mut args = vec![];
+
+    crate::fs::make_executable("./build/dev/chez/run.sh")?;
+
+    let mut args = vec![];
+
+    args.push(format!("./build/dev/chez/{package}/{module}.main.scm"));
+
+    _ = paths;
+    _ = arguments;
+
+    ProjectIO::new().exec("./build/dev/chez/run.sh", &args, &[], None, Stdio::Inherit)
 }
 
 fn run_erlang(
