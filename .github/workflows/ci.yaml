@@ -364,11 +364,11 @@ jobs:
 
       - run: cargo build
 
-      - name: Upload artifact (Ubuntu)
-        uses: actions/upload-artifact@v4
-        with:
-          name: gleam
-          path: target/debug/gleam
+      # - name: Upload artifact (Ubuntu)
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: gleam
+      #     path: target/debug/gleam
 
   test-projects:
     name: test-projects
